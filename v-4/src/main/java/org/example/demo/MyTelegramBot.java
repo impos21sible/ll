@@ -12,11 +12,17 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
+import static javafx.application.Application.launch;
 
 public class MyTelegramBot extends TelegramLongPollingBot {
 
+
+
     private static final String USER_DATA_FILE = "src/main/resources/users.csv"; // Путь к файлу с данными пользователей
-    private boolean isAuthorized = false; // Флаг для проверки успешной авторизации
+    private Set<Long> authorizedUsers = new HashSet<>(); // Множество для хранения авторизованных пользователей
     private double[] coefficients = new double[3]; // Массив для хранения коэффициентов
     private int coefficientIndex = 0; // Индекс для отслеживания, какой коэффициент вводится
 
@@ -45,10 +51,17 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                     break;
                 case "🖥 Получить сигнал":
                     getSignal(chatId); // Обработка запроса сигнала
+                case "/take_signals":
+                    getSignal(chatId); // Обработка запроса сигнала
                     break;
                 case "/login":
                     // Запрос ввода логина и пароля
-                    sendMessage(chatId, "Введите ваше имя пользователя и пароль через пробел: /login <имя_пользователя> <пароль>");
+                    sendMessage(chatId, "🔑 Пожалуйста, введите ваше имя пользователя и пароль через пробел в формате:\n" +
+                            "/login <имя_пользователя> <пароль>");
+
+                    break;
+                case "/logout":
+                    handleLogout(chatId); // Обработка выхода
                     break;
                 default:
                     if (messageText.startsWith("/login ")) {
@@ -81,6 +94,14 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    private void handleLogout(long chatId) {
+        if (authorizedUsers.remove(chatId)) { // Удаляем пользователя из списка авторизованных
+            sendMessage(chatId, "Вы успешно вышли из системы. Вам необходимо авторизоваться снова.");
+        } else {
+            sendMessage(chatId, "Вы не авторизованы.");
+        }
+    }
+
     private void sendWelcomeMessage(long chatId) {
         File photo = new File("src/main/resources/trade.jpg");
         SendPhoto photoMessage = new SendPhoto();
@@ -88,11 +109,12 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         InputFile inputFile = new InputFile(photo);
         photoMessage.setPhoto(inputFile);
 
-        String caption = "\uD83D\uDE0B\uFEFFДобро пожаловать в \uD83D\uDD38Lucky Jet GPT\uD83D\uDD38!\n" +
+        String caption = "\uD83D\uDE0B Добро пожаловать в \uD83D\uDD38 Lucky Jet GPT \uD83D\uDD38!\n" +
                 "\n" +
-                "\uD83D\uDE80 Lucky Jet — это захватывающая азартная игра, идеально подходящая для тех, кто стремится к быстрой и увлекательной прибыли.\n" +
-                "Твоя цель — сделать ставку и вовремя вывести выигрыш!\n" +
-                "Наш бот, основанный на нейросети OpenAI, поможет тебе предугадать лучшие моменты для кэшаута с точностью до 97%.";
+                "\uD83D\uDE80 Присоединяйтесь к захватывающему миру Lucky Jet — идеальному месту для быстрой и увлекательной прибыли!\n" +
+                "✨ Ваша задача — ставить и вовремя выводить выигрыши!\n" +
+                "🧠 Наш бот, использующий мощь нейросети OpenAI, поможет вам выбирать лучшие моменты для кэшаута с точностью до 97%.";
+
 
         photoMessage.setCaption(caption);
         photoMessage.setReplyMarkup(Buttons.getMainMenuKeyboard());
@@ -112,11 +134,13 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         photoMessage.setPhoto(inputFile);
 
         String caption = "🌐 Шаг 1 - Зарегистрируйся\n\n" +
-                "✦ Для синхронизации с нашим ботом необходимо зарегистрировать НОВЫЙ аккаунт...\n" +
-                "✦ Если Вы переходите по ссылке и попадаете на старый аккаунт, необходимо выйти с него.\n" +
-                "● После завершения регистрации, нажмите на Помощь и напишите нашему оператору.\n" +
+                "✦ 🔑 Для синхронизации с нашим ботом необходимо зарегистрировать НОВЫЙ аккаунт!\n" +
+                "✦ Если Вы переходите по ссылке и попадаете на старый аккаунт, 🚫 необходимо выйти с него.\n" +
+                "● ✉️ После завершения регистрации, нажмите на Помощь и напишите нашему оператору!\n" +
                 "🌟 Шаг 2 - Нажмите Назад и получите сигнал.\n" +
-                "🔍 Шаг 3 - Вставьте данные о прошлых 10 играх.";
+                "🔍 Шаг 3 - Вставьте данные о прошлых 3 - ех играх.";
+
+
 
         photoMessage.setCaption(caption);
         photoMessage.setReplyMarkup(Buttons.getRegistrationMenu());
@@ -136,12 +160,12 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         photoMessage.setPhoto(inputFile);
 
         String caption = "Бот основан на нейросети от OpenAI.\n\n" +
-                "Чтобы достичь максимального выигрыша, придерживайтесь данной инструкции:\n" +
-                "1️⃣ Регистрация в 1WIN: Зарегистрируйтесь.\n" +
-                "2️⃣ Пополнение баланса: Пополните свой игровой счет.\n" +
-                "3️⃣ Выбор игры: Перейдите в раздел 1win games и выберите игру 💣 ‘LuckyJet’.\n" +
-                "4️⃣ Настройка игры: Установите сумму.\n" +
-                "5️⃣ Получение сигнала: Запросите сигнал у бота.\n" +
+                "Чтобы достичь максимального выигрыша, придерживайтесь данной инструкции:\n\n" +
+                "1️⃣ Регистрация в 1WIN: Зарегистрируйтесь.\n\n" +
+                "2️⃣ Пополнение баланса: Пополните свой игровой счет.\n\n" +
+                "3️⃣ Выбор игры: Перейдите в раздел 1win games и выберите игру 💣 ‘LuckyJet’.\n\n" +
+                "4️⃣ Настройка игры: Установите сумму.\n\n" +
+                "5️⃣ Получение сигнала: Запросите сигнал у бота.\n\n" +
                 "6️⃣ Неудачные сигналы: Если сигнал оказался неудачным, удвойте свою ставку.";
 
         photoMessage.setCaption(caption);
@@ -155,15 +179,24 @@ public class MyTelegramBot extends TelegramLongPollingBot {
     }
 
     private void getSignal(long chatId) {
-        if (!isAuthorized) { // Проверка, авторизован ли пользователь
-            sendMessage(chatId, "Пожалуйста, сначала авторизуйтесь с помощью команды /login.");
-            return; // Завершение выполнения метода, если пользователь не авторизован
+        if (!authorizedUsers.contains(chatId)) { // Проверка, авторизован ли пользователь
+            sendMessage(chatId, "🚫 *Доступ запрещен!* 🚫\n\n" +
+                    "✅ Сначала авторизуйтесь с помощью команды \uD83C\uDF1F /login.\n\n" +
+                    "Если у вас возникли трудности с авторизацией, пожалуйста, напишите нашему оператору в разделе 'Регистрация' ✉️.\n\n" +
+                    "Или напишите напрямую: [написать оператору](https://t.me/kunaesv)");
+
+
         }
+
+
+
 
         if (coefficientIndex == 0) {
             SendMessage message = new SendMessage();
             message.setChatId(String.valueOf(chatId));
-            message.setText("Пожалуйста, введите коэффициент 1: x.xx");
+            message.setText("💡 **Коэффициент 1**:\n" +
+                    "Пожалуйста, введите значение в формате x.xx:");
+
             try {
                 execute(message);
             } catch (TelegramApiException e) {
@@ -172,78 +205,102 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         } else {
             SendMessage message = new SendMessage();
             message.setChatId(String.valueOf(chatId));
-            message.setText("Коэффициенты уже введены. Пожалуйста, ждите получения сигнала.");
+            message.setText("✅ **Коэффициенты уже введены!**\n\n" +
+                    "Пожалуйста, подождите получения сигнала...");
+
             try {
                 execute(message);
             } catch (TelegramApiException e) {
                 e.printStackTrace();
-            }
-        }
-    }
-
-
-    private void handleCoefficientInput(long chatId, String userInput) {
-        if (coefficientIndex < 3) {
-            try {
-                coefficients[coefficientIndex] = Double.parseDouble(userInput);
-                coefficientIndex++;
-
-                if (coefficientIndex < 3) {
-                    SendMessage message = new SendMessage();
-                    message.setChatId(String.valueOf(chatId));
-                    message.setText("Коэффициент " + coefficientIndex + " принят. Введите следующий коэффициент: x.xx");
-                    execute(message);
-                } else {
-                    SendMessage finalMessage = new SendMessage();
-                    finalMessage.setChatId(String.valueOf(chatId));
-                    finalMessage.setText("Коэффициенты успешно получены: " + Arrays.toString(coefficients));
-                    execute(finalMessage);
-
-                    checkCoefficients(chatId);
-                    resetCoefficientInput();
-                }
-            } catch (NumberFormatException | TelegramApiException e) {
-                SendMessage errorMessage = new SendMessage();
-                errorMessage.setChatId(String.valueOf(chatId));
-                errorMessage.setText("Пожалуйста, введите корректный коэффициент в формате x.xx.");
-                try {
-                    execute(errorMessage);
-                } catch (TelegramApiException ex) {
-                    ex.printStackTrace();
-                }
             }
         }
     }
 
     private void checkCoefficients(long chatId) {
-        boolean allLessThanTwo = true;
+        boolean allLessThanTwo = true; // Флаг для проверки всех коэффициентов
+        boolean oneZero = true; // Флаг для проверки всех коэффициентов
+
 
         for (double coefficient : coefficients) {
             if (coefficient >= 2) {
-                allLessThanTwo = false;
+                allLessThanTwo = false; // Если хоть один коэффициент >= 2, устанавливаем флаг в false
                 break;
             }
         }
+
+
 
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
 
         if (allLessThanTwo) {
-            message.setText("Сигнал !!! - ставьте Авто-Стоп на значение 2x - до проигрыша. Желаем удачи! 🎰");
-        } else {
-            message.setText("Обратите внимание! Один из коэффициентов превышает 2. Будьте осторожны!");
+            message.setText("🚨 **Сигнал !!!** 🚨\n\n" +
+                    "Ставьте **Авто-Стоп** на значение **2x** - до проигрыша.\n" +
+                    "Если вы проиграли, **удваивайте** - **ПОКА НЕ ВЫИГРАЕТЕ!**\n\n" +
+                    "⏳ Ждем 3 игры...\n" +
+                    "Введите 3 последних коэффициента через **Enter**.");
+
+        }
+        else
+        {
+            message.setText("⏳ Ожидаем сигнал...\n\n" +
+                    "🔍 Ждем 3 игры.\n" +
+                    "📊 Введите 3 последних коэффициента через Enter:");
+
         }
 
         try {
-            execute(message);
+            execute(message); // Отправка сообщения
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
     }
 
+
+    private void handleCoefficientInput(long chatId, String userInput) {
+        // Проверка, если мы ожидаем ввод коэффициентов
+        if (coefficientIndex < 3) {
+            try {
+                // Преобразование ввода в число
+                coefficients[coefficientIndex] = Double.parseDouble(userInput);
+                coefficientIndex++;
+
+                if (coefficientIndex < 3) {
+                    // Если еще нужно вводить коэффициенты, отправьте следующий запрос
+                    SendMessage message = new SendMessage();
+                    message.setChatId(String.valueOf(chatId));
+                    message.setText("Коэффициент " + coefficientIndex + " принят. Введите следующий коэффициент: x.xx");
+                    execute(message); // Отправка сообщения
+                } else {
+                    // Если все коэффициенты введены, выполните нужные действия
+                    SendMessage finalMessage = new SendMessage();
+                    finalMessage.setChatId(String.valueOf(chatId));
+                    finalMessage.setText("Коэффициенты успешно получены: " + Arrays.toString(coefficients));
+                    execute(finalMessage); // Отправка финального сообщения
+
+                    // Логика проверки коэффициентов
+                    checkCoefficients(chatId);
+
+                    // Сброс индекса для следующего ввода
+                    resetCoefficientInput();
+                }
+            } catch (NumberFormatException | TelegramApiException e) {
+                // Обработка ошибки, если ввод некорректен
+                SendMessage errorMessage = new SendMessage();
+                errorMessage.setChatId(String.valueOf(chatId));
+                errorMessage.setText("Пожалуйста, введите корректный коэффициент в формате x.xx.");
+                try {
+                    execute(errorMessage); // Отправка сообщения об ошибке
+                } catch (TelegramApiException ex) {
+                    ex.printStackTrace(); // Обработка исключений
+                }
+            }
+        }
+
+    }
     private void resetCoefficientInput() {
-        Arrays.fill(coefficients, 0);
-        coefficientIndex = 0;
+        coefficientIndex = 0; // Сброс индекса для следующего ввода
+        Arrays.fill(coefficients, 0); // Сброс массива коэффициентов
     }
 
     private void handleLogin(String messageText, long chatId) {
@@ -256,34 +313,34 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         String username = parts[1];
         String password = parts[2];
 
-        if (authenticateUser(username, password)) {
-            isAuthorized = true; // Установка флага авторизации
-            sendMessage(chatId, "Вы успешно авторизованы!");
-            // Здесь можно добавить дополнительные действия после успешной авторизации
+        // Проверка учетных данных
+        if (checkUserCredentials(username, password)) {
+            authorizedUsers.add(chatId); // Добавление chatId в список авторизованных пользователей
+            sendMessage(chatId, "Вы успешно авторизованы.\n\n/take_signals ");
         } else {
-            sendMessage(chatId, "Неправильное имя пользователя или пароль.");
+            sendMessage(chatId, "Неверные имя пользователя или пароль.");
         }
     }
 
-    private boolean authenticateUser(String username, String password) {
-        try (BufferedReader br = new BufferedReader(new FileReader(USER_DATA_FILE))) {
+    private boolean checkUserCredentials(String username, String password) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(USER_DATA_FILE))) {
             String line;
-            while ((line = br.readLine()) != null) {
+            while ((line = reader.readLine()) != null) {
                 String[] credentials = line.split(",");
                 if (credentials.length == 2 && credentials[0].equals(username) && credentials[1].equals(password)) {
-                    return true; // Успешная авторизация
+                    return true;
                 }
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return false; // Неудачная авторизация
+        return false;
     }
 
-    private void sendMessage(long chatId, String text) {
+    private void sendMessage(long chatId, String messageText) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
-        message.setText(text);
+        message.setText(messageText);
         try {
             execute(message);
         } catch (TelegramApiException e) {
